@@ -13,7 +13,7 @@ version = 1.0.0
 entrypoint = main_kivy.py
 
 # Dépendances Python
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,requests,certifi,urllib3
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,requests,certifi,urllib3,charset-normalizer
 
 # Orientation (portrait uniquement sur mobile)
 orientation = portrait
@@ -26,6 +26,7 @@ android.api = 33
 android.minapi = 21
 android.ndk = 25b
 android.sdk = 33
+android.ndk_api = 21
 
 # Architecture(s) Android (arm64-v8a = téléphones modernes)
 android.archs = arm64-v8a, armeabi-v7a

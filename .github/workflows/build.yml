@@ -55,28 +55,51 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y \
-            python3-pip git zip unzip \
+            python3-pip git zip unzip curl \
             openjdk-17-jdk \
             autoconf libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev \
             cmake libffi-dev libssl-dev \
-            libltdl-dev
+            libltdl-dev \
+            build-essential \
+            ccache \
+            lld \
+            libpython3-dev \
+            python3-dev \
+            patchelf
 
       - name: Installer Buildozer + Cython
-        run: pip install buildozer cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer==1.5.0 cython==0.29.37
 
       - name: Cache Android SDK/NDK
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-${{ hashFiles('buildozer.spec') }}-v3
           restore-keys: buildozer-
 
       - name: Construire l'APK Android
         run: |
-          yes | buildozer -v android debug 2>&1 | tail -100
-        env:
-          ANDROID_SDK_ROOT: ~/.buildozer/android/platform/android-sdk
+          export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+          yes | buildozer -v android debug 2>&1
+          echo "=== Contenu du dossier bin/ ==="
+          ls -la bin/ || echo "Dossier bin/ non trouvé"
+          echo "=== Recherche APK ==="
+          find . -name "*.apk" 2>/dev/null || echo "Aucun APK trouvé"
+
+      - name: Vérifier la création de l'APK
+        run: |
+          if ls bin/*.apk 1>/dev/null 2>&1; then
+            echo "APK créé avec succès :"
+            ls -lh bin/*.apk
+          else
+            echo "ERREUR : Aucun APK trouvé dans bin/"
+            echo "=== Derniers logs Buildozer ==="
+            find .buildozer -name "*.log" 2>/dev/null | head -3 | xargs tail -50 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Uploader l'APK
         uses: actions/upload-artifact@v4
