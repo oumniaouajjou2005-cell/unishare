@@ -1,0 +1,19 @@
+# ── Kivy + KivyMD (desktop & mobile) ─────────────────────────────────────────
+kivy==2.3.0
+kivymd==1.2.0
+
+# ── Dépendances existantes (inchangées) ───────────────────────────────────────
+requests
+pillow
+
+# ── Firebase REST (pas d'Admin SDK sur Android) ───────────────────────────────
+# (déjà géré par utils/firebase_client.py via requests)
+
+# ── Build Android (installer séparément sur Linux/WSL) ───────────────────────
+# buildozer==1.5.0
+# python-for-android (installé automatiquement par buildozer)
+
+# ── Notes d'installation ──────────────────────────────────────────────────────
+# pip install kivy[base] kivymd pillow requests
+# Sur Windows : pip install kivy kivymd pillow requests
+# Sur Android : utiliser buildozer (nécessite Linux/WSL)
