@@ -3,14 +3,15 @@ name: Build UniShare (Windows + Android)
 on:
   push:
     tags:
-      - 'v*'        # Déclenché par un tag  ex: v1.0.0
-  workflow_dispatch: # Ou manuellement depuis GitHub
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   # ── Build Windows .exe ────────────────────────────────────────────────────
   build-windows:
     name: Windows EXE
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - name: Télécharger le code
@@ -37,67 +38,39 @@ jobs:
           path: dist/UniShare.exe
           retention-days: 30
 
-  # ── Build Android APK ─────────────────────────────────────────────────────
+  # ── Build Android APK via Docker Kivy (SDK/NDK déjà installés) ───────────
   build-android:
     name: Android APK
     runs-on: ubuntu-22.04
+    timeout-minutes: 90
 
     steps:
       - name: Télécharger le code
         uses: actions/checkout@v4
 
-      - name: Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Installer les outils système
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y \
-            python3-pip git zip unzip curl \
-            openjdk-17-jdk \
-            autoconf libtool pkg-config \
-            zlib1g-dev libncurses5-dev libncursesw5-dev \
-            cmake libffi-dev libssl-dev \
-            libltdl-dev \
-            build-essential \
-            ccache \
-            lld \
-            libpython3-dev \
-            python3-dev \
-            patchelf
-
-      - name: Installer Buildozer + Cython
-        run: |
-          pip install --upgrade pip
-          pip install buildozer==1.5.0 cython==0.29.37
-
-      - name: Cache Android SDK/NDK
+      - name: Cache .buildozer
         uses: actions/cache@v4
         with:
-          path: ~/.buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}-v3
-          restore-keys: buildozer-
+          path: .buildozer
+          key: buildozer-docker-${{ hashFiles('buildozer.spec') }}-v1
+          restore-keys: buildozer-docker-
 
-      - name: Construire l'APK Android
+      - name: Construire l'APK avec Docker Kivy/Buildozer
         run: |
-          export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-          yes | buildozer -v android debug 2>&1
-          echo "=== Contenu du dossier bin/ ==="
-          ls -la bin/ || echo "Dossier bin/ non trouvé"
-          echo "=== Recherche APK ==="
-          find . -name "*.apk" 2>/dev/null || echo "Aucun APK trouvé"
+          docker run --rm \
+            --volume "${{ github.workspace }}":/home/user/hostcwd \
+            kivy/buildozer:latest \
+            android debug
 
-      - name: Vérifier la création de l'APK
+      - name: Vérifier et lister l'APK
         run: |
+          echo "=== Contenu bin/ ==="
+          ls -lh bin/ || echo "Dossier bin/ vide"
           if ls bin/*.apk 1>/dev/null 2>&1; then
-            echo "APK créé avec succès :"
+            echo "APK créé avec succès !"
             ls -lh bin/*.apk
           else
-            echo "ERREUR : Aucun APK trouvé dans bin/"
-            echo "=== Derniers logs Buildozer ==="
-            find .buildozer -name "*.log" 2>/dev/null | head -3 | xargs tail -50 2>/dev/null || true
+            echo "ERREUR : pas d'APK dans bin/"
             exit 1
           fi
 
@@ -108,7 +81,7 @@ jobs:
           path: bin/*.apk
           retention-days: 30
 
-  # ── Créer la Release GitHub (page de téléchargement) ─────────────────────
+  # ── Créer la Release GitHub ───────────────────────────────────────────────
   create-release:
     name: Publier la Release
     needs: [build-windows, build-android]
@@ -135,20 +108,19 @@ jobs:
         with:
           name: "UniShare ${{ github.ref_name }}"
           body: |
-            ## 📱 UniShare – Plateforme Étudiante Marocaine
+            ## UniShare – Plateforme Étudiante Marocaine
 
-            ### Téléchargements disponibles :
+            ### Téléchargements :
 
             | Plateforme | Fichier | Instructions |
             |---|---|---|
-            | 🖥️ Windows | `UniShare.exe` | Double-clic pour lancer |
-            | 🤖 Android | `*.apk` | Activer "Sources inconnues" puis installer |
+            | Windows | `UniShare.exe` | Double-clic pour lancer |
+            | Android | `*.apk` | Activer "Sources inconnues" puis installer |
 
             ### Installation Android :
             1. Télécharger le fichier `.apk`
-            2. Aller dans **Paramètres → Sécurité → Sources inconnues** → Activer
-            3. Ouvrir le fichier APK téléchargé
-            4. Appuyer sur **Installer**
+            2. **Paramètres → Sécurité → Sources inconnues** → Activer
+            3. Ouvrir le fichier APK → **Installer**
 
           files: release/**
           draft: false
